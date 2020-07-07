@@ -15,6 +15,8 @@ class Query {
 
     constructor(host = hostPort, appKey = key, appSecret = secret) {
         this._connect = new TplusOpenApiV1Client(host, appKey, appSecret)
+        this.token = ''
+        this.sid = ''
     }
 
     //请求的错误信息回调函数
@@ -64,49 +66,58 @@ class Query {
         })
     }
 
-    _saleOrderDetailRpt(reportName) {
-        return this._connect.Call('reportQuery/GetReportData', {
+    _saleOrderDetailRpt(requestOption) {
+        return this._connect.Call('reportQuery/GetReportData', requestOption
             //    提供查询参数
-            request: {
-                //表格
-                "ReportName": "SA_SaleOrderDetailRpt",
-                // 起始页
-                "PageIndex": 1,
-                //一页最多可展示的数量
-                "PageSize": 200,
-                //查询条件
-                SearchItems: [{
-                    ColumnName: "VoucherDate",
-                    BeginDefault: "2013-01-01",
-                    // BeginDefaultText: "2013-01-01",
-                    EndDefault: "2020-12-31",
-                    // EndDefaultText: "2020-12-31"
-                }
-                ],
-                //需要返回的内容
-                "ReportTableColNames": "VoucherDate,VoucherCode,CustomerCode,CustomerName",
-                //后续请求的ID、第一次请求返回
-                "TaskSessionID": null,
-                //后续请求的ID、第一次请求返回
-                "SolutionID": null
-
-            }
-        }, this._connect.getAccessToken(), this._connect.getSid())
+            , this._connect.getAccessToken(), '')
             .then(value => {
                 value = JSON.parse(value)
-                return value['TotalRecords']
+                return value
             })
     }
 
     //获取
-    async getReportInfo(reportName) {
+    async getReportInfo(params) {
+        if (typeof params !== 'object') {
+            throw new Error(`${params} is not a json`)
+        }
         const loginData = await this._generateLoginData()
         await this._reLogin(loginData)
-        //    此时得到token，可以开始请求数据
-        return await this._saleOrderDetailRpt()
+        // //    此时得到token，可以开始请求数据
+        let row = []
+        let datas = await this._saleOrderDetailRpt(params)
+        row = row.concat(datas['DataSource']['Rows'])
+        while (datas['TotalRecords'] &&  datas['PageIndex'] * 200 <= datas['TotalRecords']) {
+            params.request['PageIndex'] += 1
+            params.request['TaskSessionID'] = datas['TaskSessionID']
+            params.request['SolutionID'] = datas['SolutionID']
+            datas = await this._saleOrderDetailRpt(params)
+            row = row.concat(datas['DataSource']['Rows'])
+        }
+           // 还需要记录最后一个的数据
+        return row
     }
-
-
 }
 
 module.exports = Query
+
+// let a = new Query()
+//
+// a.getReportInfo({
+//     request: {
+//         "ReportName": "SA_SaleOrderDetailRpt",
+//         "PageIndex": 1,
+//         "PageSize": 200,
+//         SearchItems: [{
+//             ColumnName: "VoucherDate",
+//             BeginDefault: "2020-06-01",
+//             EndDefault: "2020-06-30",
+//         }
+//         ],
+//         "ReportTableColNames": "VoucherDate,VoucherCode,CustomerCode,CustomerName",
+//         "TaskSessionID": null,
+//         "SolutionID": null
+//     }
+// }).then(value => {
+//     console.log(value)
+// })

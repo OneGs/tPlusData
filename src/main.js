@@ -1,8 +1,4 @@
-const {Query} = require('./tPlus')
+const app = require('./http')
 
-const tPlusQuery = new Query()
-
-tPlusQuery.getReportInfo('')
-    .then(value => {
-        console.log(value)
-    })
+//启动监听
+app.listen(80)
