@@ -15,8 +15,6 @@ class Query {
 
     constructor(host = hostPort, appKey = key, appSecret = secret) {
         this._connect = new TplusOpenApiV1Client(host, appKey, appSecret)
-        this.token = ''
-        this.sid = ''
     }
 
     //请求的错误信息回调函数
