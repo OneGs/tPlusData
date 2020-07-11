@@ -1,0 +1,9 @@
+{
+  "apps": {
+    "name": "datav",
+    "script": "./src/main.js",
+    "env": {
+      "NODE_ENV": "production"
+    }
+  }
+}

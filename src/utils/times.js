@@ -11,12 +11,6 @@ class Times {
         return [dateYYYYMMDD(this.day), dateYYYYMMDD(this.day)]
     }
 
-    yesterday() {
-        let day = deepCopy(this.day)
-        day.setDate(day.getDate() - 1)
-        return dateYYYYMMDD(day)
-    }
-
     year() {
         let day = deepCopy(this.day)
         day.setDate(1)
@@ -43,7 +37,6 @@ class Times {
     }
 
     * lastNumberMonth(number) {
-        // yield this.month()
         let beginDate = deepCopy(this.day),
             endDate = deepCopy(this.day)
         while (number > 0) {
@@ -58,12 +51,3 @@ class Times {
 
 module.exports = Times
 
-// let a = new Times()
-//
-// let b = a.lastNumberMonth(2)
-//
-// let value = b.next()
-// while (!value.done){
-//     console.log(value.value)
-//     value = b.next()
-// }

@@ -4,17 +4,22 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "pm2 start process.json",
+    "test": "mocha ./test/**/*.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "chanjet.tc.openapisdk.node": "0.0.9",
+    "axios": "^0.19.2",
     "dateformat": "^3.0.3",
     "deepcopy": "^2.0.0",
+    "jsonwebtoken": "^8.5.1",
     "koa": "^2.13.0",
     "koa-route": "^3.2.0",
-    "mysql": "^2.18.1"
+    "request": "^2.88.0"
+  },
+  "dependencies": {
+    "mocha": "^8.0.1"
   }
 }

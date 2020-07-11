@@ -1,4 +1,6 @@
-const {TplusOpenApiV1Client} = require('chanjet.tc.openapisdk.node')
+const {TplusOpenApiV1Client} = require('./auth')
+const axios = require('axios')
+const crypto = require('crypto')
 
 const hostPort = 'http://121.89.206.102:8282'
 const key = '349c89eb-440d-48a6-9398-9ca9fe24e29e'
@@ -11,111 +13,115 @@ const company = '009'
 const yes = '√'
 const no = 'x'
 
-class Query {
 
+// 验证服务器是否正常
+async function isLogin() {
+
+    function generateAuth(url, accessToken) {
+        const authParam = {
+                "uri": url, "access_token": accessToken, "date": new Date().toUTCString()
+            },
+            hmac_sha1 = crypto.createHmac("sha1", secret);
+        //加密
+        const signalValue = hmac_sha1.update(JSON.stringify(authParam)).digest().toString('base64')
+
+        const authDic = {
+            "appKey": key, "authInfo": "hmac-sha1 " + signalValue, "paramInfo": authParam,
+        }
+        return Buffer.from(JSON.stringify(authDic)).toString('base64')
+    }
+
+    return await axios({
+        method: 'post',
+        baseURL: hostPort,
+        url: 'TPlus/api/v1/Connection',
+        headers: {
+            'Authorization': generateAuth(`${hostPort}/TPlus/api/v1/Connection`, ''),
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+    }).then(value => value.data)
+}
+
+class Connect {
     constructor(host = hostPort, appKey = key, appSecret = secret) {
-        this._connect = new TplusOpenApiV1Client(host, appKey, appSecret)
+        this._connect = new TplusOpenApiV1Client(host, appKey, appSecret);
+        return (async () => {
+            await this.generateAccessToken()
+            return this
+        })()
     }
 
-    //请求的错误信息回调函数
-    _messageShow(error, result) {
-        if (error) {
-            this._standardPrint(error.message, false)
-        } else {
-            this._standardPrint(result.toString())
-        }
-    }
-
-    //标准的错误输格式——添加错误判断符号
-    _standardPrint(message, isRight = true) {
-        let symbol = yes
-        if (!isRight) {
-            symbol = no
-        }
-        console.log(symbol, new Date(), message)
-    }
-
-    // 解析string中的token
-    _parseToken(error) {
-        const jsonPatter = /{.*}/
-        let errorJson = jsonPatter.exec(error.message)[0]
-        try {
-            errorJson = JSON.parse(errorJson)
-        } catch (e) {
-            this._messageShow(e)
-        }
-        return errorJson.data
-    }
-
-    //生成token
-    _generateLoginData() {
-        return this._connect.generateAccessTokenByPassword(
-            username, password, company, new Date()).catch((error) => {
-            this._messageShow(error)
-            return this._parseToken(error)
+    login() {
+        return new Promise((resolve, reject) => {
+            this._connect.generateAccessTokenByPassword(
+                username, password, company, new Date(), (error, value) => {
+                    return error ? reject(error) : resolve(value)
+                })
         })
     }
 
-    //重新登录
-    _reLogin(loginData) {
-        return this._connect.reLogin(loginData).then(value => {
-            this._messageShow('', value.access_token)
-            return value
-        })
-    }
-
-    _saleOrderDetailRpt(requestOption) {
-        return this._connect.Call('reportQuery/GetReportData', requestOption
-            //    提供查询参数
-            , this._connect.getAccessToken(), '')
-            .then(value => {
-                value = JSON.parse(value)
-                return value
+    reLogin(accessToken) {
+        return new Promise((resolve, reject) => {
+            this._connect.reLogin(accessToken, (error, value) => {
+                return error ? reject(error) : resolve(value)
             })
+        })
     }
 
-    //获取
-    async getReportInfo(params) {
-        if (typeof params !== 'object') {
-            throw new Error(`${params} is not a json`)
+    logout(accessToken) {
+        return new Promise((resolve, reject) => {
+            this._connect.Loginout(accessToken, (error, value) => {
+                return error ? reject(error) : resolve(value)
+            })
+        })
+    }
+
+    _parseToken(error) {
+        const errorJson = JSON.parse(/{.*}/.exec(error.message)[0])
+        return errorJson ? errorJson['data'] : ''
+    }
+
+    async generateAccessToken() {
+        const currentAccessToken = await this.login().then(value => value).catch(error => this._parseToken(error))
+        await this.reLogin(currentAccessToken).then(value => value).catch(error => error.message)
+    }
+
+    //数据请求部分
+
+    call(requestOption) {
+        return new Promise((resolve, reject) => {
+            this._connect.Call('reportQuery/GetReportData', requestOption
+                , this._connect.getAccessToken(), this._connect.getSid(), (error, value) => {
+                    error ? reject(error) : resolve(value)
+                })
+        }).then(value => JSON.parse(value)).catch(error => error)
+    }
+
+    async getSaleCounts({
+                            PageIndex = 1,
+                            PageSize = 1,
+                            BeginDefault = null,
+                            EndDefault = null,
+                            TaskSessionID = null,
+                            SolutionID = null,
+                            ReportTableColNames = ['quantity'],
+                            ColumnName = 'VoucherDate',
+                            ReportName = 'SA_SaleOrderDetailRpt'
+                        }) {
+
+        let requestOption = {
+            request: {
+                ReportName, PageIndex, PageSize,
+                SearchItems: [{
+                    ColumnName, BeginDefault, EndDefault,
+                }], "ReportTableColNames": ReportTableColNames.join(','), TaskSessionID, SolutionID
+            }
         }
-        const loginData = await this._generateLoginData()
-        await this._reLogin(loginData)
-        // //    此时得到token，可以开始请求数据
-        let row = []
-        let datas = await this._saleOrderDetailRpt(params)
-        row = row.concat(datas['DataSource']['Rows'])
-        while (datas['TotalRecords'] &&  datas['PageIndex'] * 200 <= datas['TotalRecords']) {
-            params.request['PageIndex'] += 1
-            params.request['TaskSessionID'] = datas['TaskSessionID']
-            params.request['SolutionID'] = datas['SolutionID']
-            datas = await this._saleOrderDetailRpt(params)
-            row = row.concat(datas['DataSource']['Rows'])
-        }
-           // 还需要记录最后一个的数据
-        return row
+        const response = await this.call(requestOption)
+
+        requestOption['request']['PageSize'] = response['TotalRecords']
+        return await this.call(requestOption)
     }
 }
 
-module.exports = Query
-
-// let a = new Query()
-//
-// a.getReportInfo({
-//     request: {
-//         "ReportName": "SA_SaleOrderDetailRpt",
-//         "PageIndex": 1,
-//         "PageSize": 200,
-//         SearchItems: [{
-//             ColumnName: "VoucherDate",
-//             BeginDefault: "2020-06-01",
-//             EndDefault: "2020-06-30",
-//         }
-//         ],
-//         "ReportTableColNames": "VoucherDate,VoucherCode,CustomerCode,CustomerName",
-//         "TaskSessionID": null,
-//         "SolutionID": null
-//     }
-// }).then(value => {
-//     console.log(value)
-// })
+module.exports = Connect
