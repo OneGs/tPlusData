@@ -122,6 +122,18 @@ class Connect {
         requestOption['request']['PageSize'] = response['TotalRecords']
         return await this.call(requestOption)
     }
+
+    async ordersQuantity(params) {
+        const ordersInfo = await this.getSaleCounts({
+            BeginDefault: params[0],
+            EndDefault: params[1]
+        })
+        return ordersInfo && ordersInfo['DataSource']['Rows'].reduce(
+            (total, value) => {
+                return total + parseInt(value['quantity'])
+            }, 0
+        )
+    }
 }
 
 module.exports = Connect

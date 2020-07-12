@@ -27,7 +27,7 @@ class Times {
         return [dateYYYYMMDD(beginDate), dateYYYYMMDD(endDate)]
     }
 
-    lastMouth() {
+    lastMonth() {
         let beginDate = deepCopy(this.day)
         beginDate.setMonth(beginDate.getMonth() - 1)
         beginDate.setDate(1)
