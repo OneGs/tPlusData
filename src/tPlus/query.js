@@ -1,6 +1,8 @@
 const {TplusOpenApiV1Client} = require('./auth')
 const axios = require('axios')
 const crypto = require('crypto')
+const logger = require('../logging')
+const timeGenerator = require('../utils/times')
 
 const hostPort = 'http://121.89.206.102:8282'
 const key = '349c89eb-440d-48a6-9398-9ca9fe24e29e'
@@ -9,10 +11,6 @@ const secret = '5yg8rz'
 const username = '8888'
 const password = 'sunzeyu123'
 const company = '009'
-
-const yes = '√'
-const no = 'x'
-
 
 // 验证服务器是否正常
 async function isLogin() {
@@ -45,10 +43,20 @@ async function isLogin() {
 class Connect {
     constructor(host = hostPort, appKey = key, appSecret = secret) {
         this._connect = new TplusOpenApiV1Client(host, appKey, appSecret);
+
+        this._monthinfo = null;
+
         return (async () => {
             await this.generateAccessToken()
+            logger.info('登录成功')
+            await this.initMonthInfo()
+            logger.info(`init monthInfo success: length is ${this._monthinfo.length}`)
             return this
         })()
+    }
+
+    getMonthInfo(){
+        return this._monthinfo
     }
 
     login() {
@@ -88,7 +96,8 @@ class Connect {
 
     //数据请求部分
 
-    call(requestOption) {
+    _call(requestOption) {
+        //默认请求：无法获取所有数据
         return new Promise((resolve, reject) => {
             this._connect.Call('reportQuery/GetReportData', requestOption
                 , this._connect.getAccessToken(), this._connect.getSid(), (error, value) => {
@@ -97,42 +106,52 @@ class Connect {
         }).then(value => JSON.parse(value)).catch(error => error)
     }
 
-    async getSaleCounts({
-                            PageIndex = 1,
-                            PageSize = 1,
-                            BeginDefault = null,
-                            EndDefault = null,
-                            TaskSessionID = null,
-                            SolutionID = null,
-                            ReportTableColNames = ['quantity'],
-                            ColumnName = 'VoucherDate',
-                            ReportName = 'SA_SaleOrderDetailRpt'
-                        }) {
+
+    async call({
+                   PageIndex = 1,
+                   PageSize = 1,
+                   BeginDefault = null,
+                   EndDefault = null,
+                   TaskSessionID = null,
+                   SolutionID = null,
+                   ReportTableColNames = [],
+                   ColumnName = 'VoucherDate',
+                   ReportName = 'SA_SaleOrderDetailRpt'
+               }) {
+        // 判断请求：两次请求，第一次获取总共的记录。
+        //第二次获取全部请求
 
         let requestOption = {
             request: {
                 ReportName, PageIndex, PageSize,
                 SearchItems: [{
                     ColumnName, BeginDefault, EndDefault,
-                }], "ReportTableColNames": ReportTableColNames.join(','), TaskSessionID, SolutionID
+                }], "ReportTableColNames": 'quantity', TaskSessionID, SolutionID
             }
         }
-        const response = await this.call(requestOption)
+        const response = await this._call(requestOption)
+        //第一次请求，不需要过多的数据
 
+        //第二次请求，获取完整数据
         requestOption['request']['PageSize'] = response['TotalRecords']
-        return await this.call(requestOption)
+        requestOption['request']['ReportTableColNames'] = ReportTableColNames.join(',')
+        const orders = await this._call(requestOption)
+        if(orders['DataSource']){
+            return orders
+        }
+        logger.debug('orders["DataSource"]为空、原因不明，终止程序')
+        process.exit(1)
     }
 
-    async ordersQuantity(params) {
-        const ordersInfo = await this.getSaleCounts({
-            BeginDefault: params[0],
-            EndDefault: params[1]
+    async initMonthInfo() {
+        const times = (new timeGenerator()).month()
+        const orders = await this.call({
+            BeginDefault: times[0],
+            EndDefault: times[1],
+            ReportTableColNames: ['voucherdate', 'SaleOrderCode', 'partnerName',
+            'personName', 'SaleOrderState', 'inventoryName', 'quantity', 'deliveryDate']
         })
-        return ordersInfo && ordersInfo['DataSource']['Rows'].reduce(
-            (total, value) => {
-                return total + parseInt(value['quantity'])
-            }, 0
-        )
+        this._monthinfo = orders['DataSource']['Rows']
     }
 }
 

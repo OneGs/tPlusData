@@ -1,6 +1,7 @@
 const request=require('request');
-const SignManage=require('./SignManage');
 const crypto= require('crypto');
+const logger = require('../../logging')
+
 
 function TplusOpenApiV1Client(tplusDomain,appKey,appSecret){
     var _tplusDomain=tplusDomain;
@@ -65,7 +66,6 @@ function TplusOpenApiV1Client(tplusDomain,appKey,appSecret){
         };
         request(requestOptions,function(err,res,body){
             if(!err&&res.statusCode==200){
-                // console.log("请求返回内容:"+body);
                 var json=JSON.parse(body);
                 if(json.access_token){
                     _accessToken=json.access_token;

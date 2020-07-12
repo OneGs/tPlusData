@@ -27,6 +27,14 @@ class Times {
         return [dateYYYYMMDD(beginDate), dateYYYYMMDD(endDate)]
     }
 
+    monthToYesterday(){
+        let beginDate = deepCopy(this.day)
+        beginDate.setDate(1)
+        let enDate = deepCopy(this.day)
+        enDate.setDate(enDate.getDate() - 1)
+        return[dateYYYYMMDD(beginDate), dateYYYYMMDD(enDate)]
+    }
+
     lastMonth() {
         let beginDate = deepCopy(this.day)
         beginDate.setMonth(beginDate.getMonth() - 1)
