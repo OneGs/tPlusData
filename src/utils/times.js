@@ -44,6 +44,15 @@ class Times {
         return [dateYYYYMMDD(beginDate), dateYYYYMMDD(endDate)]
     }
 
+    lastFiveMonth(){
+        let beginDate = deepCopy(this.day),
+            endDate = deepCopy(this.day)
+        beginDate.setMonth(beginDate.getMonth() - 5)
+        beginDate.setDate(1)
+        endDate.setDate(0)
+        return [dateYYYYMMDD(beginDate), dateYYYYMMDD(endDate)]
+    }
+
     * lastNumberMonth(number) {
         let beginDate = deepCopy(this.day),
             endDate = deepCopy(this.day)
@@ -58,4 +67,3 @@ class Times {
 }
 
 module.exports = Times
-

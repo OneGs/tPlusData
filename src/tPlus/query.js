@@ -55,7 +55,7 @@ class Connect {
         })()
     }
 
-    getMonthInfo(){
+    getMonthInfo() {
         return this._monthinfo
     }
 
@@ -118,6 +118,7 @@ class Connect {
                    ColumnName = 'VoucherDate',
                    ReportName = 'SA_SaleOrderDetailRpt'
                }) {
+        //获取数据
         // 判断请求：两次请求，第一次获取总共的记录。
         //第二次获取全部请求
 
@@ -135,8 +136,9 @@ class Connect {
         //第二次请求，获取完整数据
         requestOption['request']['PageSize'] = response['TotalRecords']
         requestOption['request']['ReportTableColNames'] = ReportTableColNames.join(',')
+        logger.info(`${JSON.stringify(requestOption)} CALL`)
         const orders = await this._call(requestOption)
-        if(orders['DataSource']){
+        if (orders['DataSource']) {
             return orders
         }
         logger.debug('orders["DataSource"]为空、原因不明，终止程序')
@@ -149,7 +151,7 @@ class Connect {
             BeginDefault: times[0],
             EndDefault: times[1],
             ReportTableColNames: ['voucherdate', 'SaleOrderCode', 'partnerName',
-            'personName', 'SaleOrderState', 'inventoryName', 'quantity', 'deliveryDate']
+                'personName', 'SaleOrderState', 'inventoryName', 'quantity', 'deliveryDate']
         })
         this._monthinfo = orders['DataSource']['Rows']
     }
