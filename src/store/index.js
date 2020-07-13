@@ -100,23 +100,71 @@ class DataV {
         )
     }
 
-    async initStatic() {
+    getMonth() {
+        return this._lastFiveMonthSale + this._today
+    }
+
+    getToday() {
+        return this._today
+    }
+
+    getLastMonth() {
+        return this._lastMonth
+    }
+
+    getLastFiveMonthSale() {
+        return this._lastFiveMonthSale
+    }
+
+    getPersonSaleRanking() {
+        return this._personSaleRanking
+    }
+
+    getWorkingOrders() {
+        return this._workingOrders
+    }
+
+    async flashToday() {
         this._today = await this.initTimeData((new timeGenerator()).today())
+    }
+
+    async flashMonthToYesterday() {
+        this._monthToYesterday = await this.initTimeData((new timeGenerator()).monthToYesterday())
+    }
+
+    async flashWorkingOrders() {
+        this._workingOrders = await this.initOrderStatus()
+    }
+
+    async flashPersonSaleRanking() {
+        this._personSaleRanking = await this.initPersonSaleRanking()
+    }
+
+    async flashLastMonth() {
+        this._lastMonth = await this.initLastMonth()
+    }
+
+    async flashLastFiveMonthSale() {
+        this._lastFiveMonthSale = await this.initLastFiveMonth()
+    }
+
+    async initStatic() {
+        await this.flashToday()
         logger.info(`today init success: ${this._today}`)
 
-        this._monthToYesterday = await this.initTimeData((new timeGenerator()).monthToYesterday())
+        await this.flashMonthToYesterday()
         logger.info(`monthToYesterday init success: ${this._monthToYesterday}`)
 
-        this._workingOrders = await this.initOrderStatus()
+        await this.flashWorkingOrders()
         logger.info(`WorkingOrders init success ${JSON.stringify(this._workingOrders)}`)
 
-        this._personSaleRanking = await this.initPersonSaleRanking()
+        await this.flashPersonSaleRanking()
         logger.info(`initPersonSaleRanking init success ${JSON.stringify(this._personSaleRanking)}`)
 
-        this._lastMonth = await this.initLastMonth()
+        await this.flashLastMonth()
         logger.info(`lastmonth init success: ${this._lastMonth}`)
 
-        this._lastFiveMonthSale = await this.initLastFiveMonth()
+        await this.flashLastFiveMonthSale()
         logger.info(`lastFiveMonth init success ${JSON.stringify(this._lastFiveMonthSale)}`)
     }
 }

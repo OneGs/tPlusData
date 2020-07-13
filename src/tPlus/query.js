@@ -50,7 +50,9 @@ class Connect {
             await this.generateAccessToken()
             logger.info('登录成功')
             await this.initMonthInfo()
-            logger.info(`init monthInfo success: length is ${this._monthinfo.length}`)
+            logger.info(`init monthOrders success: length is ${this._monthinfo.length}`)
+            const todayTick = this.flashTodayOrders()
+            logger.info(`设置today请求定时器 ${todayTick}`)
             return this
         })()
     }
@@ -95,7 +97,6 @@ class Connect {
     }
 
     //数据请求部分
-
     _call(requestOption) {
         //默认请求：无法获取所有数据
         return new Promise((resolve, reject) => {
@@ -105,7 +106,6 @@ class Connect {
                 })
         }).then(value => JSON.parse(value)).catch(error => error)
     }
-
 
     async call({
                    PageIndex = 1,
@@ -154,6 +154,24 @@ class Connect {
                 'personName', 'SaleOrderState', 'inventoryName', 'quantity', 'deliveryDate']
         })
         this._monthinfo = orders['DataSource']['Rows']
+    }
+
+    flashTodayOrders() {
+        return setInterval(async () => {
+            const times = (new timeGenerator()).today(),
+                todayInfo = await this.call({
+                    BeginDefault: times[0],
+                    EndDefault: times[1]
+                }),
+                originLength = this._monthinfo.length
+
+            this._monthinfo = this.updateMonthInfo(this._monthinfo, todayInfo)
+            logger.info(`原本长度：${originLength}, 更新后长度: ${this._monthinfo.length}`)
+        }, 10000)
+    }
+
+    updateMonthInfo(oldDict, newDict) {
+        return Object.assign(oldDict, newDict)
     }
 }
 
