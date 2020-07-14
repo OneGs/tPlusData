@@ -1,6 +1,7 @@
 const {TplusOpenApiV1Client} = require('./auth')
 const axios = require('axios')
 const crypto = require('crypto')
+const lodash = require('lodash')
 const logger = require('../logging')
 const timeGenerator = require('../utils/times')
 
@@ -51,8 +52,8 @@ class Connect {
             logger.info('登录成功')
             await this.initMonthInfo()
             logger.info(`init monthOrders success: length is ${this._monthinfo.length}`)
-            const todayTick = this.flashTodayOrders()
-            logger.info(`设置today请求定时器 ${todayTick}`)
+            // const todayTick = this.flashTodayOrders()
+            // logger.info(`设置today请求定时器 ${todayTick}`)
             return this
         })()
     }
@@ -158,20 +159,24 @@ class Connect {
 
     flashTodayOrders() {
         return setInterval(async () => {
-            const times = (new timeGenerator()).today(),
-                todayInfo = await this.call({
+            const times = (new timeGenerator()).today();
+            let todayInfo = await this.call({
                     BeginDefault: times[0],
                     EndDefault: times[1]
                 }),
                 originLength = this._monthinfo.length
-
-            this._monthinfo = this.updateMonthInfo(this._monthinfo, todayInfo)
-            logger.info(`原本长度：${originLength}, 更新后长度: ${this._monthinfo.length}`)
-        }, 10000)
+            todayInfo = todayInfo['DataSource']['Rows']
+            this.updateMonthInfo(this._monthinfo, todayInfo)
+            logger.info(`原本长度：${originLength}, 今日长度: ${todayInfo.length} 更新后长度: ${this._monthinfo.length}`)
+        }, 30000)
     }
 
     updateMonthInfo(oldDict, newDict) {
-        return Object.assign(oldDict, newDict)
+        const diffDict = lodash.differenceBy(newDict, oldDict, 'SaleOrderCode')
+        logger.info(`新增订单：${diffDict}`)
+        if(diffDict.length){
+            oldDict.push(diffDict)
+        }
     }
 }
 

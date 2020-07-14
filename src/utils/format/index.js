@@ -1,5 +1,5 @@
 function kgToTonne(value) {
-    return (value / 1000).toFixed(2)
+    return (value / 1000).toFixed(3)
 }
 
 

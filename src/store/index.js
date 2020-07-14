@@ -101,7 +101,7 @@ class DataV {
     }
 
     getMonth() {
-        return this._lastFiveMonthSale + this._today
+        return this._monthToYesterday + this._today
     }
 
     getToday() {
@@ -169,9 +169,4 @@ class DataV {
     }
 }
 
-let a = new DataV()
-
-a.then(
-    value => {
-    }
-)
+module.exports = new DataV()
