@@ -6,6 +6,7 @@ const loggerHttp = require('koa-pino-logger')()
 const store = require('../store')
 const format = require('../utils/format')
 const deepcopy = require('deepcopy')
+const {connect} = require('../tPlus')
 
 const app = new Koa();
 app.use(loggerHttp)
@@ -83,6 +84,13 @@ app.use(router.get('/workOrders', async (ctx) => {
     workOrdersStyle(orders)
     ctx.body = orders
 }))
+
+// app.use(router.get('/get', async (ctx) => {
+//     await connect.then(value => {
+//         value.setTodayInfo()
+//     })
+//     ctx.body = '更新成功'
+// }))
 
 function rankStyle(ranks) {
     let temp = []

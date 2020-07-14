@@ -45,21 +45,24 @@ class Connect {
     constructor(host = hostPort, appKey = key, appSecret = secret) {
         this._connect = new TplusOpenApiV1Client(host, appKey, appSecret);
 
-        this._monthinfo = null;
+        this._todayInfo = null;
+        this._monthToYesterday = null;
 
         return (async () => {
             await this.generateAccessToken()
             logger.info('登录成功')
-            await this.initMonthInfo()
-            logger.info(`init monthOrders success: length is ${this._monthinfo.length}`)
-            // const todayTick = this.flashTodayOrders()
-            // logger.info(`设置today请求定时器 ${todayTick}`)
+            this._todayInfo = await this.initMonthInfo((new timeGenerator()).today())
+            logger.info(`init today success: length is ${this._todayInfo.length}`)
+            this._monthToYesterday = await this.initMonthInfo((new timeGenerator()).monthToYesterday())
+            logger.info(`init monthToYesterday success: length is ${this._monthToYesterday.length}`)
+            const todayTick = this.flashTodayOrders()
+            logger.info(`设置today请求定时器 ${todayTick}`)
             return this
         })()
     }
 
     getMonthInfo() {
-        return this._monthinfo
+        return this._monthToYesterday.concat(this._todayInfo)
     }
 
     login() {
@@ -146,37 +149,44 @@ class Connect {
         process.exit(1)
     }
 
-    async initMonthInfo() {
-        const times = (new timeGenerator()).month()
+    async initMonthInfo(times) {
         const orders = await this.call({
             BeginDefault: times[0],
             EndDefault: times[1],
             ReportTableColNames: ['voucherdate', 'SaleOrderCode', 'partnerName',
                 'personName', 'SaleOrderState', 'inventoryName', 'quantity', 'deliveryDate']
         })
-        this._monthinfo = orders['DataSource']['Rows']
+        return orders['DataSource']['Rows']
     }
 
     flashTodayOrders() {
         return setInterval(async () => {
             const times = (new timeGenerator()).today();
-            let todayInfo = await this.call({
-                    BeginDefault: times[0],
-                    EndDefault: times[1]
-                }),
-                originLength = this._monthinfo.length
-            todayInfo = todayInfo['DataSource']['Rows']
-            this.updateMonthInfo(this._monthinfo, todayInfo)
-            logger.info(`原本长度：${originLength}, 今日长度: ${todayInfo.length} 更新后长度: ${this._monthinfo.length}`)
+            const length = this._todayInfo.length;
+            this._todayInfo = (await this.call({
+                BeginDefault: times[0],
+                EndDefault: times[1]
+            }))['DataSource']['Rows']
+            logger.info(`today原本长度: ${length}、现在长度：${this._todayInfo}`)
         }, 30000)
     }
 
-    updateMonthInfo(oldDict, newDict) {
-        const diffDict = lodash.differenceBy(newDict, oldDict, 'SaleOrderCode')
-        logger.info(`新增订单：${diffDict}`)
-        if(diffDict.length){
-            oldDict.push(diffDict)
-        }
+    setTodayInfo(datas) {
+        this._todayInfo = [
+            {
+                voucherdate: '2020-07-14',
+                SaleOrderCode: 'SO-2020-07-0327',
+                partnerName: '湖南金妍商贸有限公司',
+                personName: '尹帮松',
+                SaleOrderState: '生效',
+                inventoryName: '户外香槟金属',
+                quantity: '50.000000',
+                deliveryDate: '2020-07-16',
+                GroupLevel: '0',
+                rowType: 'D',
+                reportRowType: null
+            }
+        ]
     }
 }
 
