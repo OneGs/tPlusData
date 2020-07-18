@@ -55,6 +55,7 @@ function TplusOpenApiV1Client(tplusDomain,appKey,appSecret){
                 "Authorization":encode,
                 "Content-Type":"application/x-www-form-urlencoded"
             },
+            forever: true,
             "form":{
                 "_args":JSON.stringify({
                     "UserName":identity,
@@ -101,7 +102,8 @@ function TplusOpenApiV1Client(tplusDomain,appKey,appSecret){
             "headers":{
                 "Authorization":encode,
                 "Content-Type":"application/x-www-form-urlencoded"
-            }
+            },
+            forever: true,
         };
         request(requestOptions,function(err,res,body){
             if(!err&&res.statusCode==200){
@@ -177,6 +179,7 @@ function TplusOpenApiV1Client(tplusDomain,appKey,appSecret){
                 "Content-Type":"application/x-www-form-urlencoded",
                 "Cookie":"sid="+sid+";"
             },
+            forever: true,
             "form":{
                 "_args":JSON.stringify(postData)
             }

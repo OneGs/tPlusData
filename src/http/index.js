@@ -11,8 +11,6 @@ const {connect} = require('../tPlus')
 const app = new Koa();
 app.use(loggerHttp)
 
-const timeKey = ['month', 'lastMonth', 'today']
-
 //设置请求头
 app.use(async (ctx, next) => {
     await next()

@@ -13,6 +13,9 @@ const username = '8888'
 const password = 'sunzeyu123'
 const company = '009'
 
+const COUNT = 120;
+const ONEMINUTE = 60000;
+
 // 验证服务器是否正常
 async function isLogin() {
 
@@ -48,17 +51,31 @@ class Connect {
         this._todayInfo = null;
         this._monthToYesterday = null;
 
+        // 计数，避免过度请求造成程序假死。
+        this._requestTick = null; // 定时器
+        this._count = null;
+
         return (async () => {
-            await this.generateAccessToken()
-            logger.info('登录成功')
-            this._todayInfo = await this.initMonthInfo((new timeGenerator()).today())
-            logger.info(`init today success: length is ${this._todayInfo.length}`)
-            this._monthToYesterday = await this.initMonthInfo((new timeGenerator()).monthToYesterday())
-            logger.info(`init monthToYesterday success: length is ${this._monthToYesterday.length}`)
-            const todayTick = this.flashTodayOrders()
-            logger.info(`设置today请求定时器 ${todayTick}`)
-            return this
+           return await this.init()
         })()
+    }
+
+    async init(){
+        await this.generateAccessToken()
+        logger.info(`登录成功 ${this._connect.getAccessToken()}`)
+        this._todayInfo = await this.initMonthInfo((new timeGenerator()).today())
+        logger.info(`init today success: length is ${this._todayInfo.length}`)
+        this._monthToYesterday = await this.initMonthInfo((new timeGenerator()).monthToYesterday())
+        logger.info(`init monthToYesterday success: length is ${this._monthToYesterday.length}`)
+        this._resetCount()
+        logger.info(`设置请求次数`)
+        this.flashTodayOrders()
+        logger.info(`设置today请求定时器 ${this._requestTick}`)
+        return this
+    }
+
+    _resetCount() {
+        this._count = COUNT;
     }
 
     getMonthInfo() {
@@ -140,7 +157,7 @@ class Connect {
         //第二次请求，获取完整数据
         requestOption['request']['PageSize'] = response['TotalRecords']
         requestOption['request']['ReportTableColNames'] = ReportTableColNames.join(',')
-        logger.info(`${JSON.stringify(requestOption)} CALL`)
+        // logger.info(`${JSON.stringify(requestOption)} CALL`)
         const orders = await this._call(requestOption)
         if (orders['DataSource']) {
             return orders
@@ -160,15 +177,34 @@ class Connect {
     }
 
     flashTodayOrders() {
-        return setInterval(async () => {
-            const times = (new timeGenerator()).today();
-            const length = this._todayInfo.length;
-            this._todayInfo = (await this.call({
-                BeginDefault: times[0],
-                EndDefault: times[1]
-            }))['DataSource']['Rows']
-            logger.info(`today原本长度: ${length}、现在长度：${this._todayInfo}`)
-        }, 30000)
+        this._requestTick = setInterval(async () => {
+            if (!this._count) {
+                logger.info(`清除定时器`)
+                clearInterval(this._requestTick)
+                logger.info(`退出登录 ${await this.logout(this._connect.getAccessToken())}`)
+                logger.info(`等待1分钟`)
+                await new Promise(resolve => {
+                    setTimeout(() => {
+                        resolve()
+                    }, ONEMINUTE);
+                }).then(async () => {
+                    await this.init();
+                })
+            } else {
+                const times = (new timeGenerator()).today();
+                const length = this._todayInfo.length;
+                this._todayInfo = (await this.call({
+                    BeginDefault: times[0],
+                    EndDefault: times[1]
+                }))['DataSource']['Rows']
+                logger.info(`today原本长度: ${length}、现在长度：${this._todayInfo.length}、剩余次数：${this._count}`)
+                this._count -= 1
+            }
+        }, ONEMINUTE)
+    }
+
+    flashLoginInfo() {
+
     }
 
     setTodayInfo(datas) {

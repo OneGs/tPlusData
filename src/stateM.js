@@ -1,0 +1,4 @@
+class StateM {
+    constructor() {
+    }
+}
