@@ -11,6 +11,8 @@ class DataV {
         this._lastFiveMonthSale = null;
         this._personSaleRanking = null;
         this._workingOrders = null;
+        this._companyQuantity = null;
+        this._wareHouse = null;
 
         return (async () => {
             await this.initStatic()
@@ -92,6 +94,26 @@ class DataV {
         return saleRank
     }
 
+    async initCompanyQuantity(){
+        const companyQuantity = {};
+        await connect.then(value => {
+            value.getMonthInfo().forEach(({partnerName, quantity}) => {
+                if(!(partnerName in companyQuantity)){
+                    companyQuantity[partnerName] = parseFloat(quantity)
+                }else {
+                    companyQuantity[partnerName] += parseFloat(quantity)
+                }
+            })
+        })
+        return companyQuantity
+    }
+
+    async initWareHouse(){
+        return await connect.then(value => {
+            return value.getWareHouse()
+        })
+    }
+
     reduceQuantity(orders) {
         return orders.reduce(
             (total, value) => {
@@ -124,6 +146,14 @@ class DataV {
         return this._workingOrders
     }
 
+    getCompanyQuantity(){
+        return this._companyQuantity
+    }
+
+    getWareHouse(){
+        return this._wareHouse
+    }
+
     async flashToday() {
         this._today = await this.initTimeData((new timeGenerator()).today())
     }
@@ -148,6 +178,15 @@ class DataV {
         this._lastFiveMonthSale = await this.initLastFiveMonth()
     }
 
+    async flashCompanyQuantity(){
+        this._companyQuantity = await this.initCompanyQuantity()
+    }
+
+    async flashWareHouse(){
+        this._wareHouse = await this.initWareHouse()
+    }
+
+
     async initStatic() {
         await this.flashToday()
         logger.info(`today init success: ${this._today}`)
@@ -166,6 +205,12 @@ class DataV {
 
         await this.flashLastFiveMonthSale()
         logger.info(`lastFiveMonth init success ${JSON.stringify(this._lastFiveMonthSale)}`)
+
+        await this.flashCompanyQuantity()
+        logger.info(`companyQuantity init success ${JSON.stringify(this._companyQuantity)}`)
+
+        await this.flashWareHouse()
+        logger.info(`wareHouse init success ${JSON.stringify(this._wareHouse)}`)
     }
 }
 

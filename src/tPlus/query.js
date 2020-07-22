@@ -1,7 +1,6 @@
 const {TplusOpenApiV1Client} = require('./auth')
 const axios = require('axios')
 const crypto = require('crypto')
-const lodash = require('lodash')
 const logger = require('../logging')
 const timeGenerator = require('../utils/times')
 
@@ -56,11 +55,11 @@ class Connect {
         this._count = null;
 
         return (async () => {
-           return await this.init()
+            return await this.init()
         })()
     }
 
-    async init(){
+    async init() {
         await this.generateAccessToken()
         logger.info(`登录成功 ${this._connect.getAccessToken()}`)
         this._todayInfo = await this.initMonthInfo((new timeGenerator()).today())
@@ -71,6 +70,7 @@ class Connect {
         logger.info(`设置请求次数`)
         this.flashTodayOrders()
         logger.info(`设置today请求定时器 ${this._requestTick}`)
+        this._wareHouseInfo = await this.initWareHouse((new timeGenerator()).month())
         return this
     }
 
@@ -80,6 +80,12 @@ class Connect {
 
     getMonthInfo() {
         return this._monthToYesterday.concat(this._todayInfo)
+    }
+
+    getWareHouse() {
+        return this._wareHouseInfo.filter(value => {
+            return value['IDWarehouse']
+        })
     }
 
     login() {
@@ -176,6 +182,17 @@ class Connect {
         return orders['DataSource']['Rows']
     }
 
+    async initWareHouse(times) {
+        const quantity = await this.call({
+            BeginDefault: times[0],
+            EndDefault: times[1],
+            ReportName: "ST_MaterialDispatchSumRpt",
+            ReportTableColNames: ['IDWarehouse', 'Warehouse', 'BaseQuantity', 'BasePrice',
+                'Amount']
+        })
+        return quantity['DataSource']['Rows']
+    }
+
     flashTodayOrders() {
         this._requestTick = setInterval(async () => {
             if (!this._count) {
@@ -203,10 +220,7 @@ class Connect {
         }, ONEMINUTE)
     }
 
-    flashLoginInfo() {
-
-    }
-
+    // 测试代码
     setTodayInfo(datas) {
         this._todayInfo = [
             {
